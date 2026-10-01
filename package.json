@@ -1,0 +1,36 @@
+{
+  "name": "meta-acc-bot",
+  "version": "1.0.0",
+  "description": "Production-ready Telegram bot for managing and selling authorized digital account inventory",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node verify.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
+    "postinstall": "prisma generate"
+  },
+  "keywords": [
+    "telegram-bot",
+    "inventory-management",
+    "ecommerce",
+    "prisma",
+    "render",
+    "express"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

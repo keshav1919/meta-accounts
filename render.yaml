@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: telegram-account-bot
+    runtime: node
+    plan: free
+    buildCommand: npm install && npx prisma generate && npx prisma db push
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: BOT_TOKEN
+        value: 8964060821:AAFNHduE8MpRxpjU3plzl6DoDqNO0L4K-bY
+      - key: BOT_USERNAME
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: meta-acc-db
+          property: connectionString
+      - key: ADMIN_IDS
+        value: "5232576810"
+      - key: CHANNEL_USERNAME
+        value: "https://t.me/+IMLxlk2X0tIxNWVl"
+      - key: CHANNEL_ID
+        value: "-1004483464492"
+      - key: PAYMENT_UPI_ID
+        value: "xdsellerkeshav@fam"
+      - key: PAYMENT_NAME
+        value: "LEGEND"
+      - key: ACCOUNT_PRICE_PAISE
+        value: "5000"
+      - key: WELCOME_BONUS_PAISE
+        value: "300"
+      - key: REFERRAL_REWARD_PAISE
+        value: "200"
+      - key: MIN_DEPOSIT_PAISE
+        value: "100"
+
+databases:
+  - name: meta-acc-db
+    plan: free

@@ -1,0 +1,189 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum AccountStatus {
+  AVAILABLE
+  SOLD
+}
+
+enum OrderStatus {
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TransactionType {
+  WELCOME_BONUS
+  DEPOSIT
+  REFERRAL_REWARD
+  PURCHASE
+  ADMIN_ADJUSTMENT
+  REFUND
+}
+
+model User {
+  id                  String              @id @default(uuid())
+  telegramId          String              @unique
+  username            String?
+  firstName           String?
+  lastName            String?
+  balancePaise        BigInt              @default(0)
+  referralCode        String              @unique
+  referredById        String?
+  referredBy          User?               @relation("UserReferrals", fields: [referredById], references: [id])
+  referrals           User[]              @relation("UserReferrals")
+  referralRewardGiven Boolean             @default(false)
+  isRestricted        Boolean             @default(false)
+  welcomeBonusGiven   Boolean             @default(false)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  orders              Order[]
+  accountsPurchased   Account[]           @relation("PurchasedAccounts")
+  payments            Payment[]
+  walletTransactions  WalletTransaction[]
+  referralsGiven      Referral[]          @relation("ReferralReferrer")
+  referralReceived    Referral?           @relation("ReferralReferred")
+
+  @@index([telegramId])
+  @@index([referralCode])
+}
+
+model StockBatch {
+  id            String    @id @default(uuid())
+  batchNumber   Int?
+  fileName      String
+  totalAccounts Int       @default(10)
+  createdAt     DateTime  @default(now())
+
+  accounts      Account[]
+
+  @@index([batchNumber])
+}
+
+model Account {
+  id           String        @id @default(uuid())
+  batchId      String
+  batch        StockBatch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  fullName     String
+  email        String        @unique
+  password     String
+  createdOn    String
+  status       AccountStatus @default(AVAILABLE)
+  soldToUserId String?
+  soldToUser   User?         @relation("PurchasedAccounts", fields: [soldToUserId], references: [id])
+  soldAt       DateTime?
+  createdAt    DateTime      @default(now())
+
+  orderItems   OrderItem[]
+
+  @@index([status])
+  @@index([email])
+  @@index([soldToUserId])
+}
+
+model Order {
+  id               String      @id @default(uuid())
+  orderNumber      String      @unique
+  userId           String
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quantity         Int
+  totalAmountPaise BigInt
+  status           OrderStatus @default(DELIVERED)
+  createdAt        DateTime    @default(now())
+
+  items            OrderItem[]
+
+  @@index([orderNumber])
+  @@index([userId])
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id])
+
+  @@index([orderId])
+  @@index([accountId])
+}
+
+model Payment {
+  id               String        @id @default(uuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountPaise      BigInt
+  utr              String?       @unique
+  screenshotFileId String?
+  status           PaymentStatus @default(PENDING)
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  adminNote        String?
+  createdAt        DateTime      @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@index([utr])
+}
+
+model WalletTransaction {
+  id                 String          @id @default(uuid())
+  userId             String
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type               TransactionType
+  amountPaise        BigInt
+  balanceBeforePaise BigInt
+  balanceAfterPaise  BigInt
+  referenceId        String?
+  description        String
+  createdAt          DateTime        @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Referral {
+  id             String   @id @default(uuid())
+  referrerId     String
+  referrer       User     @relation("ReferralReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUserId String   @unique
+  referredUser   User     @relation("ReferralReferred", fields: [referredUserId], references: [id], onDelete: Cascade)
+  rewardPaise    BigInt   @default(200)
+  status         String   @default("COMPLETED")
+  createdAt      DateTime @default(now())
+
+  @@index([referrerId])
+  @@index([referredUserId])
+}
+
+model AdminAction {
+  id               String   @id @default(uuid())
+  adminTelegramId  String
+  action           String
+  targetUserId     String?
+  metadata         String?
+  createdAt        DateTime @default(now())
+
+  @@index([adminTelegramId])
+  @@index([action])
+}
+
+model SystemSetting {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
