@@ -8,3 +8,9 @@ yarn-error.log*
 dist/
 coverage/
 .prisma/
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+
