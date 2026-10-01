@@ -11,10 +11,10 @@ from bot_python.services.user_service import get_user_profile_details, set_user_
 from bot_python.services.notification_service import notify_user
 from bot_python.keyboards.admin_kb import (
     get_admin_menu_keyboard,
-    getStockMenuKeyboard as get_stock_menu_keyboard,
-    getPaymentActionKeyboard as get_payment_action_keyboard,
-    getUserActionKeyboard as get_user_action_keyboard,
-    getBackToAdminKeyboard as get_back_to_admin_keyboard,
+    get_stock_menu_keyboard,
+    get_payment_action_keyboard,
+    get_user_action_keyboard,
+    get_back_to_admin_keyboard,
 )
 from bot_python.utils.formatter import format_paise, format_date_ist
 from bot_python.states import AdminStates

@@ -16,13 +16,13 @@ from bot_python.services.purchase_service import get_unit_price_paise
 from bot_python.services.wallet_service import admin_adjust_balance
 from bot_python.services.notification_service import notify_user
 from bot_python.keyboards.customer_kb import (
-    getOrderConfirmationKeyboard as get_order_confirmation_keyboard,
-    getBackToMenuKeyboard as get_back_to_menu_keyboard,
-    getPaymentMethodKeyboard as get_payment_method_keyboard,
+    get_order_confirmation_keyboard,
+    get_back_to_menu_keyboard,
+    get_payment_method_keyboard,
 )
 from bot_python.keyboards.admin_kb import (
-    getUserActionKeyboard as get_user_action_keyboard,
-    getBackToAdminKeyboard as get_back_to_admin_keyboard,
+    get_user_action_keyboard,
+    get_back_to_admin_keyboard,
 )
 from bot_python.states import DepositStates, BuyStates, AdminStates
 

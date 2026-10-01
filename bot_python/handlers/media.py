@@ -10,7 +10,7 @@ from bot_python.services.user_service import get_user_by_telegram_id
 from bot_python.services.payment_service import create_screenshot_payment
 from bot_python.services.notification_service import notify_admins_photo
 from bot_python.keyboards.customer_kb import get_main_menu_keyboard
-from bot_python.keyboards.admin_kb import getPaymentActionKeyboard as get_payment_action_keyboard, getBackToAdminKeyboard as get_back_to_admin_keyboard
+from bot_python.keyboards.admin_kb import get_payment_action_keyboard, get_back_to_admin_keyboard
 from bot_python.utils.formatter import format_paise, format_date_ist
 from bot_python.states import DepositStates
 

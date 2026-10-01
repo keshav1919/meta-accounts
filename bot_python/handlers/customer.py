@@ -7,7 +7,7 @@ from aiogram.fsm.context import FSMContext
 from bot_python.config import config
 from bot_python.services.user_service import (
     get_or_register_user,
-    getUserReferralStats as get_user_referral_stats,
+    get_user_referral_stats,
     process_referral_reward,
     get_user_by_telegram_id,
 )

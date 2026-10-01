@@ -8,7 +8,7 @@ from bot_python.services.user_service import (
     get_or_register_user,
     process_referral_reward,
     get_user_by_telegram_id,
-    getUserReferralStats as get_user_referral_stats,
+    get_user_referral_stats,
 )
 from bot_python.services.stock_service import get_available_count
 from bot_python.services.purchase_service import execute_purchase, get_unit_price_paise, get_user_orders
