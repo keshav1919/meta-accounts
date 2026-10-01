@@ -12,6 +12,7 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
 
 Base = declarative_base()
 
@@ -38,6 +39,30 @@ class TransactionType(str, enum.Enum):
     PURCHASE = "PURCHASE"
     ADMIN_ADJUSTMENT = "ADMIN_ADJUSTMENT"
     REFUND = "REFUND"
+
+AccountStatusEnum = PG_ENUM(
+    "AVAILABLE", "SOLD",
+    name="AccountStatus",
+    create_type=False,
+)
+
+OrderStatusEnum = PG_ENUM(
+    "DELIVERED", "CANCELLED",
+    name="OrderStatus",
+    create_type=False,
+)
+
+PaymentStatusEnum = PG_ENUM(
+    "PENDING", "APPROVED", "REJECTED",
+    name="PaymentStatus",
+    create_type=False,
+)
+
+TransactionTypeEnum = PG_ENUM(
+    "WELCOME_BONUS", "DEPOSIT", "REFERRAL_REWARD", "PURCHASE", "ADMIN_ADJUSTMENT", "REFUND",
+    name="TransactionType",
+    create_type=False,
+)
 
 class User(Base):
     __tablename__ = "User"
@@ -84,7 +109,7 @@ class Account(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password = Column(String, nullable=False)
     createdOn = Column(String, nullable=False)
-    status = Column(String, default="AVAILABLE", nullable=False, index=True)
+    status = Column(AccountStatusEnum, default="AVAILABLE", nullable=False, index=True)
     soldToUserId = Column(String, ForeignKey("User.id"), nullable=True, index=True)
     soldAt = Column(DateTime(timezone=True), nullable=True)
     createdAt = Column(DateTime(timezone=True), default=get_utc_now, nullable=False)
@@ -102,7 +127,7 @@ class Order(Base):
     userId = Column(String, ForeignKey("User.id", ondelete="CASCADE"), nullable=False, index=True)
     quantity = Column(Integer, nullable=False)
     totalAmountPaise = Column(BigInteger, nullable=False)
-    status = Column(String, default="DELIVERED", nullable=False)
+    status = Column(OrderStatusEnum, default="DELIVERED", nullable=False)
     createdAt = Column(DateTime(timezone=True), default=get_utc_now, nullable=False)
 
     user = relationship("User", back_populates="orders")
@@ -128,7 +153,7 @@ class Payment(Base):
     amountPaise = Column(BigInteger, nullable=False)
     utr = Column(String, unique=True, nullable=True, index=True)
     screenshotFileId = Column(String, nullable=True)
-    status = Column(String, default="PENDING", nullable=False, index=True)
+    status = Column(PaymentStatusEnum, default="PENDING", nullable=False, index=True)
     reviewedBy = Column(String, nullable=True)
     reviewedAt = Column(DateTime(timezone=True), nullable=True)
     adminNote = Column(String, nullable=True)
@@ -142,7 +167,7 @@ class WalletTransaction(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     userId = Column(String, ForeignKey("User.id", ondelete="CASCADE"), nullable=False, index=True)
-    type = Column(String, nullable=False, index=True)
+    type = Column(TransactionTypeEnum, nullable=False, index=True)
     amountPaise = Column(BigInteger, nullable=False)
     balanceBeforePaise = Column(BigInteger, nullable=False)
     balanceAfterPaise = Column(BigInteger, nullable=False)
