@@ -2,24 +2,29 @@ const prisma = require('../database/prisma');
 const config = require('../config');
 const logger = require('../utils/logger');
 const { splitDeliveryMessages } = require('../utils/splitter');
+const { cache } = require('../utils/cache');
+const { invalidateStockCache } = require('./stock.service');
 
 /**
  * Purchase Service - atomic stock allocation and order processing
  */
 
 /**
- * Fetch current unit price per account in paise
+ * Fetch current unit price per account in paise with in-memory caching
  */
 const getUnitPricePaise = async () => {
+  const cached = cache.get('unit_price_paise');
+  if (cached !== null && cached !== undefined) {
+    return cached;
+  }
+
   const setting = await prisma.systemSetting.findUnique({
     where: { key: 'ACCOUNT_PRICE_PAISE' },
   });
 
-  if (setting && setting.value) {
-    return BigInt(setting.value);
-  }
-
-  return config.accountPricePaise;
+  const price = setting && setting.value ? BigInt(setting.value) : config.accountPricePaise;
+  cache.set('unit_price_paise', price, 60000); // 60s TTL
+  return price;
 };
 
 /**
@@ -163,6 +168,9 @@ const executePurchase = async ({ userId, quantity }) => {
     const deliveryMessages = splitDeliveryMessages(result.accounts);
 
     logger.info(`Order completed: ${result.order.orderNumber} for user ${userId} (${quantity} accounts)`);
+
+    // Invalidate stock cache so subsequent calls reflect updated count immediately
+    invalidateStockCache();
 
     return {
       success: true,

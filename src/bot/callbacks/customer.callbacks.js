@@ -24,7 +24,7 @@ const registerCustomerCallbacks = (bot) => {
   // Check Channel Join Callback
   bot.action('check_join', async (ctx) => {
     const telegramId = ctx.from.id;
-    const isJoined = await checkUserChannelJoin(ctx);
+    const isJoined = await checkUserChannelJoin(ctx, true);
 
     if (!isJoined && !config.isAdmin(telegramId)) {
       return ctx.answerCbQuery('❌ You have not joined yet. Please join the channel first!', {

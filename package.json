@@ -5,6 +5,11 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "start:rdp": "node --max-old-space-size=256 src/server.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop meta-acc-bot",
+    "pm2:restart": "pm2 restart meta-acc-bot",
+    "pm2:logs": "pm2 logs meta-acc-bot",
     "dev": "node --watch src/server.js",
     "test": "node verify.js",
     "prisma:generate": "prisma generate",

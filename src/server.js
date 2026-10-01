@@ -26,8 +26,13 @@ const startServer = async () => {
       await bot.telegram.deleteWebhook({ drop_pending_updates: false });
       bot.launch({
         dropPendingUpdates: false,
+        allowedUpdates: ['message', 'callback_query'],
+        polling: {
+          timeout: 25,
+          limit: 100,
+        },
       });
-      logger.info('Telegram Bot running in POLLING mode');
+      logger.info('Telegram Bot running in POLLING mode (Optimized for RDP & High Concurrency)');
     }
 
     // 4. Graceful Shutdown Handlers (Section 67)

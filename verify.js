@@ -119,9 +119,19 @@ generateUpiQrBuffer({
   assert.ok(Buffer.isBuffer(buf), 'QR result must be a buffer');
   assert.ok(buf.length > 500, 'QR buffer must be non-empty');
   console.log('✔ UPI QR Code tests passed.\n');
+
+  // 7. Test In-Memory Cache
+  console.log('Testing In-Memory High-Speed Cache...');
+  const { cache } = require('./src/utils/cache');
+  cache.set('test_key', 42, 1000);
+  assert.strictEqual(cache.get('test_key'), 42);
+  cache.delete('test_key');
+  assert.strictEqual(cache.get('test_key'), null);
+  console.log('✔ Memory Cache tests passed.\n');
+
   console.log('🎉 ALL AUTOMATED VERIFICATION TESTS PASSED SUCCESSFULLY!');
 }).catch((err) => {
-  console.error('❌ UPI QR test failed:', err);
+  console.error('❌ Tests failed:', err);
   process.exit(1);
 });
 

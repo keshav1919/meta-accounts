@@ -21,13 +21,29 @@ const { handleDocumentUpload } = require('./handlers/document.handler');
 const { handlePhotoUpload } = require('./handlers/photo.handler');
 const { handleTextMessage } = require('./handlers/text.handler');
 
+const https = require('https');
+
+// Persistent HTTPS keep-alive agent to eliminate repeated TLS handshake latency
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 15000,
+  maxSockets: 100,
+  maxFreeSockets: 30,
+  timeout: 60000,
+});
+
 const initBot = () => {
   if (!config.botToken) {
     logger.error('CRITICAL: BOT_TOKEN is missing in environment variables');
     throw new Error('BOT_TOKEN is required');
   }
 
-  const bot = new Telegraf(config.botToken);
+  const bot = new Telegraf(config.botToken, {
+    telegram: {
+      agent: httpsAgent,
+    },
+    handlerTimeout: 90000,
+  });
 
   // Provide bot instance to notification service
   notificationService.setBotInstance(bot);

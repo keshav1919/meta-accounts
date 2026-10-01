@@ -1,25 +1,49 @@
 const config = require('../../config');
 const logger = require('../../utils/logger');
+const { cache } = require('../../utils/cache');
 const { getChannelJoinKeyboard } = require('../keyboards/customer.keyboards');
 
 /**
  * Check if a Telegram user is a member of the required channel
+ * Caches positive verification for 5 minutes to prevent Telegram rate-limiting (429)
+ * and provide ultra-fast 0ms response times for active users.
+ * 
  * @param {object} ctx - Telegraf context
+ * @param {boolean} forceRefresh - If true, bypass cache and re-check with Telegram
  * @returns {Promise<boolean>}
  */
-const checkUserChannelJoin = async (ctx) => {
+const checkUserChannelJoin = async (ctx, forceRefresh = false) => {
   if (!config.channelId) {
     // If no channel ID configured, bypass check
     return true;
   }
 
+  const userId = ctx.from?.id;
+  if (!userId) return false;
+
+  const cacheKey = `channel_member_${userId}`;
+  if (!forceRefresh) {
+    const cachedStatus = cache.get(cacheKey);
+    if (cachedStatus === true) {
+      return true;
+    }
+  }
+
   try {
-    const member = await ctx.telegram.getChatMember(config.channelId, ctx.from.id);
+    const member = await ctx.telegram.getChatMember(config.channelId, userId);
     const validStatuses = ['member', 'administrator', 'creator'];
-    return validStatuses.includes(member.status);
+    const isJoined = validStatuses.includes(member.status);
+
+    if (isJoined) {
+      // Cache verified membership for 5 minutes
+      cache.set(cacheKey, true, 5 * 60 * 1000);
+    } else {
+      cache.delete(cacheKey);
+    }
+
+    return isJoined;
   } catch (err) {
-    logger.warn(`Channel membership check failed for user ${ctx.from.id}: ${err.message}`);
-    // If bot isn't admin or cannot check, return false so user is prompted or verify error
+    logger.warn(`Channel membership check failed for user ${userId}: ${err.message}`);
     return false;
   }
 };

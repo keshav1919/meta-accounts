@@ -1,6 +1,7 @@
 const prisma = require('../database/prisma');
 const { parseStockFile } = require('../utils/parser');
 const logger = require('../utils/logger');
+const { cache } = require('../utils/cache');
 
 /**
  * Stock Service - manages inventory batches and accounts
@@ -95,6 +96,9 @@ const importStockTxt = async ({ content, fileName, adminTelegramId }) => {
 
     logger.info(`Stock imported: Batch #${finalBatchNumber} with ${accounts.length} accounts by admin ${adminTelegramId}`);
 
+    // Invalidate stock cache so fresh count is immediately visible
+    cache.delete('stock_available_count');
+
     return {
       success: true,
       batchNumber: finalBatchNumber,
@@ -126,10 +130,22 @@ const getStockStats = async () => {
 };
 
 /**
- * Get available account count
+ * Get available account count with in-memory TTL caching (4 seconds)
+ * Keeps response time instant during high concurrency and eliminates database load
  */
 const getAvailableCount = async () => {
-  return prisma.account.count({ where: { status: 'AVAILABLE' } });
+  const cached = cache.get('stock_available_count');
+  if (typeof cached === 'number') {
+    return cached;
+  }
+
+  const count = await prisma.account.count({ where: { status: 'AVAILABLE' } });
+  cache.set('stock_available_count', count, 4000); // 4 seconds TTL
+  return count;
+};
+
+const invalidateStockCache = () => {
+  cache.delete('stock_available_count');
 };
 
 /**
@@ -161,5 +177,6 @@ module.exports = {
   importStockTxt,
   getStockStats,
   getAvailableCount,
+  invalidateStockCache,
   searchAccounts,
 };
