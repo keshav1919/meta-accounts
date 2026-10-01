@@ -2,12 +2,7 @@ const { Markup } = require('telegraf');
 const config = require('../../config');
 
 /**
- * Customer Keyboards and Multi-Color Inline Button Layouts
- * Uses Telegram Bot API 9.4 native button styles:
- * - style: 'success' -> Green background
- * - style: 'primary' -> Blue background
- * - style: 'danger'  -> Red background
- * - default          -> Dark grey background
+ * Customer Keyboards - React-Router Styled Clean Navigation Flow
  */
 
 /**
@@ -21,19 +16,17 @@ const getChannelJoinKeyboard = () => {
 };
 
 /**
- * Main Customer Multi-Color Inline Menu Keyboard
- * Matches the reference image layout:
- * - Green full-width header action button (style: 'success')
- * - Blue information and balance buttons (style: 'primary')
- * - Green funding button (style: 'success')
- * - Red support button (style: 'danger')
- * - Dark standard main menu button
+ * Clean Root Route Keyboard (Main Menu)
+ * Only 4 top-level routes:
+ * 1. 🛒 Buy Accounts (Green action)
+ * 2. 💰 Wallet & Funds | 📋 My Orders (Blue primary routes)
+ * 3. 👥 Refer & Earn | 📞 Support (Blue & Red)
  */
 const getMainMenuKeyboard = ({ availableStock = 0, isAdmin = false } = {}) => {
   const stockText = availableStock > 0 ? ` [${availableStock} Left]` : ' [0 Left]';
 
   const buttons = [
-    // Top Green Button (Action)
+    // Route 1: Buy (Featured Action)
     [
       {
         text: `🛒 Buy Accounts (₹3/each)${stockText}`,
@@ -41,55 +34,30 @@ const getMainMenuKeyboard = ({ availableStock = 0, isAdmin = false } = {}) => {
         style: 'success',
       },
     ],
-    // Blue Buttons (Stock & Balance)
+    // Route 2 & 3: Wallet & Orders
     [
       {
-        text: `📦 Available Stock: ${availableStock}`,
-        callback_data: 'menu_stock',
+        text: '💰 Wallet & Funds',
+        callback_data: 'menu_wallet',
         style: 'primary',
       },
       {
-        text: '💰 Balance',
-        callback_data: 'menu_balance',
-        style: 'primary',
-      },
-    ],
-    // Green Add Funds & Blue Purchases
-    [
-      {
-        text: '➕ Add Funds',
-        callback_data: 'menu_deposit',
-        style: 'success',
-      },
-      {
-        text: '📋 My Purchases',
+        text: '📋 My Orders',
         callback_data: 'menu_purchases',
         style: 'primary',
       },
     ],
-    // Blue Ledger & Referrals
+    // Route 4 & 5: Referrals & Support
     [
-      {
-        text: '💳 Transactions',
-        callback_data: 'menu_transactions',
-        style: 'primary',
-      },
       {
         text: '👥 Refer & Earn',
         callback_data: 'menu_referral',
         style: 'primary',
       },
-    ],
-    // Red Support & Dark Home Button
-    [
       {
         text: '📞 Support',
         callback_data: 'menu_support',
         style: 'danger',
-      },
-      {
-        text: '🏠 Main Menu',
-        callback_data: 'main_menu',
       },
     ],
   ];
@@ -97,9 +65,8 @@ const getMainMenuKeyboard = ({ availableStock = 0, isAdmin = false } = {}) => {
   if (isAdmin) {
     buttons.push([
       {
-        text: '🛠 Admin Control Panel',
+        text: '🛠 Admin Panel',
         callback_data: 'admin_menu',
-        style: 'primary',
       },
     ]);
   }
@@ -108,15 +75,48 @@ const getMainMenuKeyboard = ({ availableStock = 0, isAdmin = false } = {}) => {
 };
 
 /**
- * Persistent 4-Dot Bottom Reply Keyboard (ReplyKeyboardMarkup)
- * Renders the 4-dots grid icon at the bottom of the Telegram chat bar
+ * Sub-Route Keyboard: 💰 Wallet & Funds (/wallet)
+ */
+const getWalletKeyboard = () => {
+  return Markup.inlineKeyboard([
+    [
+      { text: '➕ Add Funds', callback_data: 'menu_deposit', style: 'success' },
+      { text: '💳 Transactions', callback_data: 'menu_transactions', style: 'primary' },
+    ],
+    [{ text: '🏠 Back to Menu', callback_data: 'main_menu' }],
+  ]);
+};
+
+/**
+ * Sub-Route Keyboard: 📋 Orders (/orders)
+ */
+const getOrdersKeyboard = () => {
+  return Markup.inlineKeyboard([
+    [{ text: '🛒 Buy Accounts', callback_data: 'menu_buy', style: 'success' }],
+    [{ text: '🏠 Back to Menu', callback_data: 'main_menu' }],
+  ]);
+};
+
+/**
+ * Sub-Route Keyboard: 💳 Transactions (/transactions)
+ */
+const getTransactionsKeyboard = () => {
+  return Markup.inlineKeyboard([
+    [
+      { text: '💰 Back to Wallet', callback_data: 'menu_wallet', style: 'primary' },
+      { text: '🏠 Back to Menu', callback_data: 'main_menu' },
+    ],
+  ]);
+};
+
+/**
+ * Clean Persistent 4-Dot Bottom Reply Keyboard (ReplyKeyboardMarkup)
  */
 const getBottomReplyKeyboard = (isAdmin = false) => {
   const rows = [
-    ['🛒 Buy Accounts', '📦 Available Stock'],
-    ['💰 Balance', '➕ Add Funds'],
-    ['📦 My Purchases', '💳 Transactions'],
-    ['👥 Refer & Earn', '📞 Support'],
+    ['🛒 Buy Accounts', '💰 Wallet & Funds'],
+    ['📋 My Orders', '👥 Refer & Earn'],
+    ['📞 Support'],
   ];
 
   if (isAdmin) {
@@ -137,7 +137,6 @@ const getPaymentMethodKeyboard = () => {
 
 /**
  * Buy quantity selector keyboard (multiples of 10 up to available stock)
- * Multi-color green options with dark cancel button
  */
 const getBuyQuantityKeyboard = (availableStock) => {
   const rows = [];
@@ -165,9 +164,7 @@ const getBuyQuantityKeyboard = (availableStock) => {
 };
 
 /**
- * Order confirmation keyboard with multi-color buttons:
- * - Green confirm button (style: 'success')
- * - Red cancel button (style: 'danger')
+ * Order confirmation keyboard
  */
 const getOrderConfirmationKeyboard = (quantity) => {
   return Markup.inlineKeyboard([
@@ -198,6 +195,9 @@ const getBackToMenuKeyboard = () => {
 module.exports = {
   getChannelJoinKeyboard,
   getMainMenuKeyboard,
+  getWalletKeyboard,
+  getOrdersKeyboard,
+  getTransactionsKeyboard,
   getBottomReplyKeyboard,
   getPaymentMethodKeyboard,
   getBuyQuantityKeyboard,

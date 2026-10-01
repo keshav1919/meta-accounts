@@ -11,6 +11,9 @@ const { getUnitPricePaise, getUserOrders } = require('../../services/purchase.se
 const {
   getChannelJoinKeyboard,
   getMainMenuKeyboard,
+  getWalletKeyboard,
+  getOrdersKeyboard,
+  getTransactionsKeyboard,
   getBottomReplyKeyboard,
   getBuyQuantityKeyboard,
   getBackToMenuKeyboard,
@@ -134,7 +137,7 @@ ${formatPaise(summary.referralEarnings)}
 Welcome Bonus:
 ${formatPaise(summary.welcomeBonus)}`;
 
-  return ctx.reply(text, getMainMenuKeyboard({ availableStock, isAdmin: config.isAdmin(telegramId) }));
+  return ctx.reply(text, getWalletKeyboard());
 };
 
 /**
@@ -206,12 +209,11 @@ const handlePurchases = async (ctx) => {
     return ctx.reply('Please send /start first to register.');
   }
 
-  const availableStock = await getAvailableCount();
   const orders = await getUserOrders(user.id, 10);
   if (orders.length === 0) {
     return ctx.reply(
       '📦 You have not purchased any accounts yet.',
-      getMainMenuKeyboard({ availableStock, isAdmin: config.isAdmin(telegramId) })
+      getOrdersKeyboard()
     );
   }
 
@@ -225,7 +227,7 @@ Date: ${formatDateIST(o.createdAt)}`;
     })
     .join('\n\n-------------------------\n\n');
 
-  return ctx.reply(`📦 My Purchases\n\n${list}`, getMainMenuKeyboard({ availableStock, isAdmin: config.isAdmin(telegramId) }));
+  return ctx.reply(`📋 My Orders\n\n${list}`, getOrdersKeyboard());
 };
 
 /**
@@ -238,12 +240,11 @@ const handleTransactions = async (ctx) => {
     return ctx.reply('Please send /start first to register.');
   }
 
-  const availableStock = await getAvailableCount();
   const transactions = await getUserTransactions(user.id, 10);
   if (transactions.length === 0) {
     return ctx.reply(
       '💳 No transactions recorded yet.',
-      getMainMenuKeyboard({ availableStock, isAdmin: config.isAdmin(telegramId) })
+      getTransactionsKeyboard()
     );
   }
 
@@ -255,7 +256,7 @@ const handleTransactions = async (ctx) => {
     })
     .join('\n\n');
 
-  return ctx.reply(`💳 Transactions\n\n${list}`, getMainMenuKeyboard({ availableStock, isAdmin: config.isAdmin(telegramId) }));
+  return ctx.reply(`💳 Transactions\n\n${list}`, getTransactionsKeyboard());
 };
 
 /**

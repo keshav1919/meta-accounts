@@ -55,9 +55,11 @@ const initBot = () => {
   // Customer Commands
   bot.command('start', customerCommands.handleStart);
   bot.command('balance', requireChannelJoin, customerCommands.handleBalance);
+  bot.command('wallet', requireChannelJoin, customerCommands.handleBalance);
   bot.command('buy', requireChannelJoin, requireNotRestricted, customerCommands.handleBuy);
   bot.command('deposit', requireChannelJoin, requireNotRestricted, customerCommands.handleDeposit);
   bot.command('purchases', requireChannelJoin, customerCommands.handlePurchases);
+  bot.command('orders', requireChannelJoin, customerCommands.handlePurchases);
   bot.command('transactions', requireChannelJoin, customerCommands.handleTransactions);
   bot.command('referral', requireChannelJoin, customerCommands.handleReferral);
   bot.command('help', customerCommands.handleSupport);
@@ -72,14 +74,14 @@ const initBot = () => {
   });
 
   // 4-Dot Bottom Reply Keyboard Handlers
-  bot.hears('🛒 Buy Accounts', requireChannelJoin, requireNotRestricted, customerCommands.handleBuy);
-  bot.hears('📦 Available Stock', requireChannelJoin, customerCommands.handleCustomerStock);
-  bot.hears('💰 Balance', requireChannelJoin, customerCommands.handleBalance);
+  bot.hears(['🛒 Buy Accounts', '/buy'], requireChannelJoin, requireNotRestricted, customerCommands.handleBuy);
+  bot.hears(['💰 Wallet & Funds', '💰 Balance'], requireChannelJoin, customerCommands.handleBalance);
+  bot.hears(['📋 My Orders', '📦 My Purchases'], requireChannelJoin, customerCommands.handlePurchases);
+  bot.hears(['👥 Refer & Earn'], requireChannelJoin, customerCommands.handleReferral);
+  bot.hears(['📞 Support'], customerCommands.handleSupport);
   bot.hears('➕ Add Funds', requireChannelJoin, requireNotRestricted, customerCommands.handleDeposit);
-  bot.hears('📦 My Purchases', requireChannelJoin, customerCommands.handlePurchases);
   bot.hears('💳 Transactions', requireChannelJoin, customerCommands.handleTransactions);
-  bot.hears('👥 Refer & Earn', requireChannelJoin, customerCommands.handleReferral);
-  bot.hears('📞 Support', customerCommands.handleSupport);
+  bot.hears('📦 Available Stock', requireChannelJoin, customerCommands.handleCustomerStock);
   bot.hears('🛠 Admin Panel', requireAdmin, adminCommands.handleAdminMenu);
 
   // Admin Commands (Enforce admin authentication)

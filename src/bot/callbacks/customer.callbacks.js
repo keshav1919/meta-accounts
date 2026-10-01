@@ -10,6 +10,9 @@ const { getUnitPricePaise, executePurchase, getUserOrders } = require('../../ser
 const notificationService = require('../../services/notification.service');
 const {
   getMainMenuKeyboard,
+  getWalletKeyboard,
+  getOrdersKeyboard,
+  getTransactionsKeyboard,
   getBuyQuantityKeyboard,
   getOrderConfirmationKeyboard,
   getPaymentMethodKeyboard,
@@ -18,7 +21,7 @@ const {
 const { getState, setState, clearState } = require('../state');
 
 const registerCustomerCallbacks = (bot) => {
-  // Check Channel Join Callback (Section 4)
+  // Check Channel Join Callback
   bot.action('check_join', async (ctx) => {
     const telegramId = ctx.from.id;
     const isJoined = await checkUserChannelJoin(ctx);
@@ -31,7 +34,6 @@ const registerCustomerCallbacks = (bot) => {
 
     await ctx.answerCbQuery('✅ Membership verified!');
 
-    // Check if there was a pending referral payload in state
     const pendingState = getState(telegramId);
     const startPayload = pendingState?.state === 'PENDING_JOIN_REF' ? pendingState.data.payload : null;
 
@@ -53,7 +55,7 @@ const registerCustomerCallbacks = (bot) => {
     const availableStock = await getAvailableCount();
     const text = `🎉 Welcome to META ACCOUNTS!
 
-📦 Available Stock: ${availableStock} Accounts
+📦 In Stock: ${availableStock} Accounts
 💰 Price: ₹3.00 / Account
 ${isNew ? '🎁 ₹3.00 Welcome bonus has been credited to your wallet!\n\n' : ''}Choose an option below:`;
 
@@ -64,18 +66,22 @@ ${isNew ? '🎁 ₹3.00 Welcome bonus has been credited to your wallet!\n\n' : '
     }
   });
 
-  // Main menu navigation
+  // Home Route (Main menu navigation)
   bot.action('main_menu', async (ctx) => {
     await ctx.answerCbQuery();
     clearState(ctx.from.id);
     const isAdmin = config.isAdmin(ctx.from.id);
     const availableStock = await getAvailableCount();
-    const text = `🏠 Main Menu
+    const user = await getUserByTelegramId(ctx.from.id);
+
+    const text = `🏪 META ACCOUNTS STORE
 
 📦 Available Stock: ${availableStock} Accounts
 💰 Price: ₹3.00 / Account
+💳 Wallet Balance: ${formatPaise(user?.balancePaise || 0n)}
 
-Please select an option below:`;
+Select a destination below:`;
+
     try {
       await ctx.editMessageText(text, getMainMenuKeyboard({ availableStock, isAdmin }));
     } catch {
@@ -83,7 +89,7 @@ Please select an option below:`;
     }
   });
 
-  // Stock overview for customer
+  // Stock Sub-Route
   bot.action('menu_stock', async (ctx) => {
     await ctx.answerCbQuery();
     const available = await getAvailableCount();
@@ -93,9 +99,9 @@ Please select an option below:`;
 
 🟢 Available Accounts: ${available}
 💰 Price per Account: ${formatPaise(unitPrice)}
-🛒 Minimum Purchase: 10 Accounts (${formatPaise(unitPrice * 10n)})
+🛒 Minimum Order: 10 Accounts (${formatPaise(unitPrice * 10n)})
 
-⚡ Verified legal inventory with instant Telegram delivery!`;
+⚡ Verified authorized accounts with instant delivery!`;
 
     const keyboard = {
       inline_keyboard: [
@@ -111,7 +117,7 @@ Please select an option below:`;
     }
   });
 
-  // Buy Accounts menu
+  // Buy Route (/buy)
   bot.action('menu_buy', async (ctx) => {
     await ctx.answerCbQuery();
     const user = await getUserByTelegramId(ctx.from.id);
@@ -152,18 +158,16 @@ Select quantity (multiples of 10):`;
     const text = `🛒 ORDER SUMMARY
 
 Quantity: ${quantity} Accounts
-
 Price per account: ${formatPaise(unitPrice)}
-
-Total: ${formatPaise(totalCost)}
+Total Cost: ${formatPaise(totalCost)}
 
 Your Wallet Balance: ${formatPaise(user.balancePaise)}
-${user.balancePaise < totalCost ? '\n⚠️ Insufficient balance! Please add funds before confirming.' : ''}`;
+${user.balancePaise < totalCost ? '\n⚠️ Insufficient balance! Please add funds in your wallet first.' : ''}`;
 
     await ctx.editMessageText(text, getOrderConfirmationKeyboard(quantity));
   });
 
-  // Confirm Purchase (Atomic execution)
+  // Confirm Purchase
   bot.action(/^buy_confirm_(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery('Processing order...');
     const quantity = parseInt(ctx.match[1], 10);
@@ -178,35 +182,28 @@ ${user.balancePaise < totalCost ? '\n⚠️ Insufficient balance! Please add fun
     if (!purchaseResult.success) {
       return ctx.editMessageText(
         `❌ ${purchaseResult.error}`,
-        getMainMenuKeyboard(config.isAdmin(ctx.from.id))
+        getWalletKeyboard()
       );
     }
 
-    // 1. Deliver account credentials directly as Telegram text messages (Section 27, 28, 59)
+    // Deliver accounts
     for (const msg of purchaseResult.deliveryMessages) {
       await ctx.reply(msg);
     }
 
-    // 2. Send purchase success receipt (Section 29)
+    // Receipt
     const successMsg = `✅ PURCHASE SUCCESSFUL
 
-Quantity:
-${quantity} Accounts
+Quantity: ${quantity} Accounts
+Amount Paid: ${formatPaise(purchaseResult.totalAmountPaise)}
+Remaining Balance: ${formatPaise(purchaseResult.balanceAfter)}
+Order ID: ${purchaseResult.order.orderNumber}
 
-Amount Paid:
-${formatPaise(purchaseResult.totalAmountPaise)}
+Your accounts have been delivered above!`;
 
-Remaining Balance:
-${formatPaise(purchaseResult.balanceAfter)}
+    await ctx.reply(successMsg, getOrdersKeyboard());
 
-Order ID:
-${purchaseResult.order.orderNumber}
-
-Your account data has been delivered above.`;
-
-    await ctx.reply(successMsg, getMainMenuKeyboard(config.isAdmin(ctx.from.id)));
-
-    // 3. Notify Admin of new order (Section 39)
+    // Notify Admin
     const remainingStock = await getAvailableCount();
     await notificationService.notifyNewOrder({
       order: purchaseResult.order,
@@ -215,34 +212,29 @@ Your account data has been delivered above.`;
     });
   });
 
-  // Balance
-  bot.action('menu_balance', async (ctx) => {
+  // Wallet Route (/wallet)
+  bot.action(['menu_wallet', 'menu_balance'], async (ctx) => {
     await ctx.answerCbQuery();
     const user = await getUserByTelegramId(ctx.from.id);
     if (!user) return ctx.reply('Please send /start first.');
 
     const summary = await getBalanceSummary(user.id);
-    const text = `💰 Balance
+    const text = `💰 WALLET & FUNDS
 
 Wallet Balance:
 ${formatPaise(summary.balancePaise)}
 
-Total Deposited:
-${formatPaise(summary.totalDeposited)}
+Total Deposited: ${formatPaise(summary.totalDeposited)}
+Total Spent: ${formatPaise(summary.totalSpent)}
+Referral Earnings: ${formatPaise(summary.referralEarnings)}
+Welcome Bonus: ${formatPaise(summary.welcomeBonus)}
 
-Total Spent:
-${formatPaise(summary.totalSpent)}
+Select an option below:`;
 
-Referral Earnings:
-${formatPaise(summary.referralEarnings)}
-
-Welcome Bonus:
-${formatPaise(summary.welcomeBonus)}`;
-
-    await ctx.editMessageText(text, getMainMenuKeyboard(config.isAdmin(ctx.from.id)));
+    await ctx.editMessageText(text, getWalletKeyboard());
   });
 
-  // Deposit Funds
+  // Deposit Route (/deposit)
   bot.action('menu_deposit', async (ctx) => {
     await ctx.answerCbQuery();
     const user = await getUserByTelegramId(ctx.from.id);
@@ -251,18 +243,16 @@ ${formatPaise(summary.welcomeBonus)}`;
 
     setState(ctx.from.id, 'AWAITING_DEPOSIT_AMOUNT');
 
-    const text = `💰 Add Funds
+    const text = `💰 Add Funds to Wallet
 
 Minimum manual deposit: ₹1.00
 
-Enter the amount in ₹ you wish to add (e.g. 50 or 100):`;
+Enter the amount in ₹ you wish to add (e.g. 30, 50, or 100):`;
 
     await ctx.editMessageText(text, getBackToMenuKeyboard());
   });
 
-
-
-  // Purchases list
+  // Orders Route (/orders)
   bot.action('menu_purchases', async (ctx) => {
     await ctx.answerCbQuery();
     const user = await getUserByTelegramId(ctx.from.id);
@@ -270,17 +260,17 @@ Enter the amount in ₹ you wish to add (e.g. 50 or 100):`;
 
     const orders = await getUserOrders(user.id, 10);
     if (orders.length === 0) {
-      return ctx.editMessageText('📦 You have not purchased any accounts yet.', getMainMenuKeyboard(config.isAdmin(ctx.from.id)));
+      return ctx.editMessageText('📋 You have not purchased any accounts yet.', getOrdersKeyboard());
     }
 
     const list = orders
-      .map((o) => `📦 ORDER ${o.orderNumber}\nQuantity: ${o.quantity}\nAmount: ${formatPaise(o.totalAmountPaise)}\nStatus: Delivered\nDate: ${formatDateIST(o.createdAt)}`)
+      .map((o) => `📦 Order ${o.orderNumber}\nQuantity: ${o.quantity} Accounts\nAmount: ${formatPaise(o.totalAmountPaise)}\nStatus: Delivered\nDate: ${formatDateIST(o.createdAt)}`)
       .join('\n\n-------------------------\n\n');
 
-    await ctx.editMessageText(`📦 My Purchases\n\n${list}`, getMainMenuKeyboard(config.isAdmin(ctx.from.id)));
+    await ctx.editMessageText(`📋 My Orders\n\n${list}`, getOrdersKeyboard());
   });
 
-  // Transactions list
+  // Transactions Route (/transactions)
   bot.action('menu_transactions', async (ctx) => {
     await ctx.answerCbQuery();
     const user = await getUserByTelegramId(ctx.from.id);
@@ -288,7 +278,7 @@ Enter the amount in ₹ you wish to add (e.g. 50 or 100):`;
 
     const transactions = await getUserTransactions(user.id, 10);
     if (transactions.length === 0) {
-      return ctx.editMessageText('💳 No transactions recorded yet.', getMainMenuKeyboard(config.isAdmin(ctx.from.id)));
+      return ctx.editMessageText('💳 No transactions recorded yet.', getTransactionsKeyboard());
     }
 
     const list = transactions
@@ -299,10 +289,10 @@ Enter the amount in ₹ you wish to add (e.g. 50 or 100):`;
       })
       .join('\n\n');
 
-    await ctx.editMessageText(`💳 Transactions\n\n${list}`, getMainMenuKeyboard(config.isAdmin(ctx.from.id)));
+    await ctx.editMessageText(`💳 Transactions Ledger\n\n${list}`, getTransactionsKeyboard());
   });
 
-  // Referral link & stats
+  // Referral Route (/referral)
   bot.action('menu_referral', async (ctx) => {
     await ctx.answerCbQuery();
     const user = await getUserByTelegramId(ctx.from.id);
@@ -319,16 +309,16 @@ Earn ${formatPaise(config.referralRewardPaise)} for every friend who joins!
 🔗 Your Referral Link:
 ${referralLink}
 
-📊 Your Referrals: ${stats.totalCount}
+📊 Total Referrals: ${stats.totalCount}
 💰 Total Earned: ${formatPaise(stats.totalEarnedPaise)}`;
 
-    await ctx.editMessageText(text, getMainMenuKeyboard(config.isAdmin(ctx.from.id)));
+    await ctx.editMessageText(text, getBackToMenuKeyboard());
   });
 
-  // Support
+  // Support Route (/support)
   bot.action('menu_support', async (ctx) => {
     await ctx.answerCbQuery();
-    const text = `📞 Support & Assistance
+    const text = `📞 Customer Support
 
 Need help with your account or order?
 Please contact our official administrator.
@@ -336,7 +326,7 @@ Please contact our official administrator.
 UPI ID: ${config.paymentUpiId}
 Account Name: ${config.paymentName}`;
 
-    await ctx.editMessageText(text, getMainMenuKeyboard(config.isAdmin(ctx.from.id)));
+    await ctx.editMessageText(text, getBackToMenuKeyboard());
   });
 };
 
