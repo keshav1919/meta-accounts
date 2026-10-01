@@ -26,7 +26,7 @@ const config = {
   paymentUpiId: process.env.PAYMENT_UPI_ID || '',
   paymentName: process.env.PAYMENT_NAME || '',
 
-  accountPricePaise: BigInt(process.env.ACCOUNT_PRICE_PAISE || '5000'), // default ₹50
+  accountPricePaise: BigInt(process.env.ACCOUNT_PRICE_PAISE || '300'), // default ₹3
   welcomeBonusPaise: BigInt(process.env.WELCOME_BONUS_PAISE || '300'), // ₹3
   referralRewardPaise: BigInt(process.env.REFERRAL_REWARD_PAISE || '200'), // ₹2
   minDepositPaise: BigInt(process.env.MIN_DEPOSIT_PAISE || '100'), // ₹1

@@ -2,7 +2,6 @@ const config = require('../../config');
 const logger = require('../../utils/logger');
 const { formatPaise, parseRupeesToPaise, formatDateIST } = require('../../utils/formatter');
 const { getUserByTelegramId, searchUsers, getUserProfileDetails } = require('../../services/user.service');
-const { createUtrPayment } = require('../../services/payment.service');
 const { adminAdjustBalance } = require('../../services/wallet.service');
 const notificationService = require('../../services/notification.service');
 const { getPaymentMethodKeyboard, getMainMenuKeyboard, getBackToMenuKeyboard } = require('../keyboards/customer.keyboards');
@@ -28,7 +27,7 @@ const handleTextMessage = async (ctx) => {
 
   const { state, data } = userState;
 
-  // 1. Customer Deposit Amount Input
+  // 1. Customer Deposit Amount Input -> directly prompt for screenshot
   if (state === 'AWAITING_DEPOSIT_AMOUNT') {
     const parseRes = parseRupeesToPaise(text);
     if (!parseRes.valid) {
@@ -42,7 +41,8 @@ const handleTextMessage = async (ctx) => {
       );
     }
 
-    setState(telegramId, 'AWAITING_PAYMENT_PROOF', { amountPaise: parseRes.paise });
+    // Set state directly to awaiting screenshot proof
+    setState(telegramId, 'AWAITING_DEPOSIT_SCREENSHOT', { amountPaise: parseRes.paise });
 
     const payMsg = `💳 PAYMENT INSTRUCTIONS
 
@@ -54,71 +54,12 @@ UPI ID:
 Account Name:
 ${config.paymentName}
 
-After completing your payment, select how you want to submit proof:`;
+📸 Please make the payment and send your payment screenshot image directly in this chat:`;
 
     return ctx.reply(payMsg, {
       parse_mode: 'Markdown',
       ...getPaymentMethodKeyboard(),
     });
-  }
-
-  // 2. Customer UTR Submission
-  if (state === 'AWAITING_DEPOSIT_UTR') {
-    const cleanUtr = text.trim();
-    if (cleanUtr.length < 6 || cleanUtr.length > 30) {
-      return ctx.reply('❌ Please enter a valid 12-digit UPI Reference Number / UTR:');
-    }
-
-    const user = await getUserByTelegramId(telegramId);
-    if (!user) return ctx.reply('Please send /start first.');
-
-    const amountPaise = data.amountPaise;
-    const result = await createUtrPayment({
-      userId: user.id,
-      amountPaise,
-      utr: cleanUtr,
-    });
-
-    clearState(telegramId);
-
-    if (!result.success) {
-      return ctx.reply(`❌ ${result.error}`, getMainMenuKeyboard(config.isAdmin(telegramId)));
-    }
-
-    // Acknowledge customer
-    await ctx.reply(
-      `✅ Payment request submitted!\n\nUTR: \`${cleanUtr}\`\nAmount: ${formatPaise(amountPaise)}\n\nYour balance will be updated automatically upon admin approval.`,
-      {
-        parse_mode: 'Markdown',
-        ...getMainMenuKeyboard(config.isAdmin(telegramId)),
-      }
-    );
-
-    // Notify all Admins with Approve/Reject buttons (Section 10)
-    const username = user.username ? `@${user.username}` : user.firstName || 'User';
-    const adminMsg = `💳 NEW PAYMENT REQUEST
-
-User:
-${username} (ID: ${user.telegramId})
-
-Amount:
-${formatPaise(amountPaise)}
-
-Payment Method:
-UTR
-
-UTR:
-\`${cleanUtr}\`
-
-Time:
-${formatDateIST(result.payment.createdAt)}`;
-
-    await notificationService.notifyAdmins(adminMsg, {
-      parse_mode: 'Markdown',
-      ...getPaymentActionKeyboard(result.payment.id),
-    });
-
-    return;
   }
 
   // 3. Admin Search User

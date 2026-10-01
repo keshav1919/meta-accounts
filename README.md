@@ -69,7 +69,7 @@ PAYMENT_UPI_ID=xdsellerkeshav@fam
 PAYMENT_NAME=LEGEND
 
 # Economics & Pricing (in integer paise: ₹1 = 100 paise)
-ACCOUNT_PRICE_PAISE=5000     # ₹50.00 per account
+ACCOUNT_PRICE_PAISE=300      # ₹3.00 per account
 WELCOME_BONUS_PAISE=300      # ₹3.00 welcome bonus
 REFERRAL_REWARD_PAISE=200     # ₹2.00 referral reward
 MIN_DEPOSIT_PAISE=100        # ₹1.00 minimum deposit
@@ -235,12 +235,10 @@ created on (29/09/2026, 13:10:28 IST)
 ## 13. Payment & Approval Flow
 
 1. Customer taps **➕ Add Funds** (or `/deposit`).
-2. Enters amount (minimum ₹1.00).
-3. Bot presents UPI payment instructions (`PAYMENT_UPI_ID` and `PAYMENT_NAME`).
-4. Customer selects:
-   - **🔢 Submit UTR:** Types 12-digit transaction reference number.
-   - **📷 Upload Screenshot:** Sends image proof.
-5. A `PENDING` payment is created and immediately forwarded to all configured `ADMIN_IDS` with inline `[✅ Approve]` and `[❌ Reject]` buttons.
+2. Enters deposit amount (minimum ₹1.00).
+3. Bot presents UPI payment instructions (`PAYMENT_UPI_ID` and `PAYMENT_NAME`) and prompts for proof.
+4. Customer sends their payment screenshot image directly in the chat.
+5. A `PENDING` payment is created and immediately forwarded to all configured `ADMIN_IDS` with the screenshot image and inline `[✅ Approve]` and `[❌ Reject]` buttons.
 6. When an admin taps **✅ Approve**:
    - Atomic transaction validates payment is still `PENDING` (idempotency guard).
    - Credits the user's wallet balance.

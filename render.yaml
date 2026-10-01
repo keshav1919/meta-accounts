@@ -30,7 +30,7 @@ services:
       - key: PAYMENT_NAME
         value: "LEGEND"
       - key: ACCOUNT_PRICE_PAISE
-        value: "5000"
+        value: "300"
       - key: WELCOME_BONUS_PAISE
         value: "300"
       - key: REFERRAL_REWARD_PAISE

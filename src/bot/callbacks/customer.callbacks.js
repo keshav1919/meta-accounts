@@ -226,42 +226,7 @@ Enter the amount in ₹ you wish to add (e.g. 50 or 100):`;
     await ctx.editMessageText(text, getBackToMenuKeyboard());
   });
 
-  // Method Selection for Deposit
-  bot.action('deposit_method_utr', async (ctx) => {
-    await ctx.answerCbQuery();
-    const state = getState(ctx.from.id);
-    if (!state || state.state !== 'AWAITING_PAYMENT_PROOF') {
-      return ctx.editMessageText('Session expired. Please click Add Funds again.', getMainMenuKeyboard(config.isAdmin(ctx.from.id)));
-    }
 
-    setState(ctx.from.id, 'AWAITING_DEPOSIT_UTR', { amountPaise: state.data.amountPaise });
-
-    const text = `🔢 Submit UTR
-
-Amount: ${formatPaise(state.data.amountPaise)}
-
-Please type and send your 12-digit UPI Reference Number / UTR:`;
-
-    await ctx.editMessageText(text, getBackToMenuKeyboard());
-  });
-
-  bot.action('deposit_method_screenshot', async (ctx) => {
-    await ctx.answerCbQuery();
-    const state = getState(ctx.from.id);
-    if (!state || state.state !== 'AWAITING_PAYMENT_PROOF') {
-      return ctx.editMessageText('Session expired. Please click Add Funds again.', getMainMenuKeyboard(config.isAdmin(ctx.from.id)));
-    }
-
-    setState(ctx.from.id, 'AWAITING_DEPOSIT_SCREENSHOT', { amountPaise: state.data.amountPaise });
-
-    const text = `📷 Upload Screenshot
-
-Amount: ${formatPaise(state.data.amountPaise)}
-
-Please send your payment confirmation screenshot image now:`;
-
-    await ctx.editMessageText(text, getBackToMenuKeyboard());
-  });
 
   // Purchases list
   bot.action('menu_purchases', async (ctx) => {

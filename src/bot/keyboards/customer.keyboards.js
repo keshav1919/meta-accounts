@@ -41,12 +41,10 @@ const getMainMenuKeyboard = (isAdmin = false) => {
 };
 
 /**
- * Payment method selection keyboard (Section 9)
+ * Deposit payment keyboard (Screenshot only)
  */
 const getPaymentMethodKeyboard = () => {
   return Markup.inlineKeyboard([
-    [Markup.button.callback('🔢 Submit UTR', 'deposit_method_utr')],
-    [Markup.button.callback('📷 Upload Screenshot', 'deposit_method_screenshot')],
     [Markup.button.callback('🔙 Back to Menu', 'main_menu')],
   ]);
 };
