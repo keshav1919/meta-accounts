@@ -32,10 +32,25 @@ const initBot = () => {
   // Provide bot instance to notification service
   notificationService.setBotInstance(bot);
 
-  // Global Error Handler (Section 48)
+  // Global Error Handler
   bot.catch((err, ctx) => {
     logger.error(`Unhandled bot error for update ${ctx?.updateType}:`, err.message);
   });
+
+  // Setup Telegram Menu Bar commands (Bottom-left Menu button in Telegram)
+  bot.telegram
+    .setMyCommands([
+      { command: 'start', description: '🏠 Main Store Menu' },
+      { command: 'buy', description: '🛒 Buy Accounts (₹3/acc)' },
+      { command: 'stock', description: '📦 Check Available Stock' },
+      { command: 'balance', description: '💰 Wallet Balance' },
+      { command: 'deposit', description: '➕ Add Funds' },
+      { command: 'purchases', description: '📋 My Purchased Orders' },
+      { command: 'transactions', description: '💳 Transaction Ledger' },
+      { command: 'referral', description: '👥 Refer & Earn (₹2/friend)' },
+      { command: 'support', description: '📞 Customer Support' },
+    ])
+    .catch((err) => logger.warn('Could not set bot commands in Telegram:', err.message));
 
   // Customer Commands
   bot.command('start', customerCommands.handleStart);
@@ -48,9 +63,27 @@ const initBot = () => {
   bot.command('help', customerCommands.handleSupport);
   bot.command('support', customerCommands.handleSupport);
 
+  // Stock command (Shows admin dashboard for admin, customer inventory for customer)
+  bot.command('stock', (ctx) => {
+    if (config.isAdmin(ctx.from?.id)) {
+      return adminCommands.handleAdminStock(ctx);
+    }
+    return customerCommands.handleCustomerStock(ctx);
+  });
+
+  // 4-Dot Bottom Reply Keyboard Handlers
+  bot.hears('🛒 Buy Accounts', requireChannelJoin, requireNotRestricted, customerCommands.handleBuy);
+  bot.hears('📦 Available Stock', requireChannelJoin, customerCommands.handleCustomerStock);
+  bot.hears('💰 Balance', requireChannelJoin, customerCommands.handleBalance);
+  bot.hears('➕ Add Funds', requireChannelJoin, requireNotRestricted, customerCommands.handleDeposit);
+  bot.hears('📦 My Purchases', requireChannelJoin, customerCommands.handlePurchases);
+  bot.hears('💳 Transactions', requireChannelJoin, customerCommands.handleTransactions);
+  bot.hears('👥 Refer & Earn', requireChannelJoin, customerCommands.handleReferral);
+  bot.hears('📞 Support', customerCommands.handleSupport);
+  bot.hears('🛠 Admin Panel', requireAdmin, adminCommands.handleAdminMenu);
+
   // Admin Commands (Enforce admin authentication)
   bot.command('admin', requireAdmin, adminCommands.handleAdminMenu);
-  bot.command('stock', requireAdmin, adminCommands.handleAdminStock);
   bot.command('payments', requireAdmin, adminCommands.handleAdminPayments);
   bot.command('stats', requireAdmin, adminCommands.handleAdminStats);
   bot.command('orders', requireAdmin, adminCommands.handleAdminOrders);

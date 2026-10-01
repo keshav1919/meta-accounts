@@ -50,15 +50,17 @@ const registerCustomerCallbacks = (bot) => {
     clearState(telegramId);
 
     const isAdmin = config.isAdmin(telegramId);
+    const availableStock = await getAvailableCount();
     const text = `🎉 Welcome to META ACCOUNTS!
 
-Your account is verified and ready.
+📦 Available Stock: ${availableStock} Accounts
+💰 Price: ₹3.00 / Account
 ${isNew ? '🎁 ₹3.00 Welcome bonus has been credited to your wallet!\n\n' : ''}Choose an option below:`;
 
     try {
-      await ctx.editMessageText(text, getMainMenuKeyboard(isAdmin));
+      await ctx.editMessageText(text, getMainMenuKeyboard({ availableStock, isAdmin }));
     } catch {
-      await ctx.reply(text, getMainMenuKeyboard(isAdmin));
+      await ctx.reply(text, getMainMenuKeyboard({ availableStock, isAdmin }));
     }
   });
 
@@ -67,11 +69,45 @@ ${isNew ? '🎁 ₹3.00 Welcome bonus has been credited to your wallet!\n\n' : '
     await ctx.answerCbQuery();
     clearState(ctx.from.id);
     const isAdmin = config.isAdmin(ctx.from.id);
-    const text = '🏠 Main Menu\n\nPlease select an option below:';
+    const availableStock = await getAvailableCount();
+    const text = `🏠 Main Menu
+
+📦 Available Stock: ${availableStock} Accounts
+💰 Price: ₹3.00 / Account
+
+Please select an option below:`;
     try {
-      await ctx.editMessageText(text, getMainMenuKeyboard(isAdmin));
+      await ctx.editMessageText(text, getMainMenuKeyboard({ availableStock, isAdmin }));
     } catch {
-      await ctx.reply(text, getMainMenuKeyboard(isAdmin));
+      await ctx.reply(text, getMainMenuKeyboard({ availableStock, isAdmin }));
+    }
+  });
+
+  // Stock overview for customer
+  bot.action('menu_stock', async (ctx) => {
+    await ctx.answerCbQuery();
+    const available = await getAvailableCount();
+    const unitPrice = await getUnitPricePaise();
+
+    const text = `📦 LIVE STOCK INVENTORY
+
+🟢 Available Accounts: ${available}
+💰 Price per Account: ${formatPaise(unitPrice)}
+🛒 Minimum Purchase: 10 Accounts (${formatPaise(unitPrice * 10n)})
+
+⚡ Verified legal inventory with instant Telegram delivery!`;
+
+    const keyboard = {
+      inline_keyboard: [
+        [{ text: '🟢 🛒 Buy Accounts Now', callback_data: 'menu_buy' }],
+        [{ text: '🔙 Back to Menu', callback_data: 'main_menu' }],
+      ],
+    };
+
+    try {
+      await ctx.editMessageText(text, { reply_markup: keyboard });
+    } catch {
+      await ctx.reply(text, { reply_markup: keyboard });
     }
   });
 
@@ -88,16 +124,14 @@ ${isNew ? '🎁 ₹3.00 Welcome bonus has been credited to your wallet!\n\n' : '
     if (available < 10) {
       return ctx.editMessageText(
         '❌ Sorry, stock is currently unavailable. Please check back later.',
-        getMainMenuKeyboard(config.isAdmin(ctx.from.id))
+        getMainMenuKeyboard({ availableStock: available, isAdmin: config.isAdmin(ctx.from.id) })
       );
     }
 
     const text = `🛒 Buy Accounts
 
-Available Stock:
-${available} Accounts
-
-Price per account: ${formatPaise(unitPrice)}
+📦 Available Stock: ${available} Accounts
+💰 Price per account: ${formatPaise(unitPrice)}
 
 Select quantity (multiples of 10):`;
 

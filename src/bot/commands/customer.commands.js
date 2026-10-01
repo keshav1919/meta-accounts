@@ -1,3 +1,4 @@
+const { Markup } = require('telegraf');
 const config = require('../../config');
 const logger = require('../../utils/logger');
 const { formatPaise, formatDateIST } = require('../../utils/formatter');
@@ -10,6 +11,7 @@ const { getUnitPricePaise, getUserOrders } = require('../../services/purchase.se
 const {
   getChannelJoinKeyboard,
   getMainMenuKeyboard,
+  getBottomReplyKeyboard,
   getBuyQuantityKeyboard,
   getBackToMenuKeyboard,
 } = require('../keyboards/customer.keyboards');
@@ -28,7 +30,6 @@ const handleStart = async (ctx) => {
   // 1. Channel membership check
   const isJoined = await checkUserChannelJoin(ctx);
   if (!isJoined && !config.isAdmin(telegramId)) {
-    // If not joined, save pending referral payload in state if provided
     if (startPayload) {
       setState(telegramId, 'PENDING_JOIN_REF', { payload: startPayload });
     }
@@ -49,7 +50,7 @@ Please join our official channel before using the bot.`;
     startPayload,
   });
 
-  // 3. If new and referred, process referral reward for referrer
+  // 3. Process referral reward if new
   if (isNew && user.referredById) {
     await processReferralReward(user.id);
   }
@@ -57,17 +58,50 @@ Please join our official channel before using the bot.`;
   clearState(telegramId);
 
   const isAdmin = config.isAdmin(telegramId);
-  const welcomeText = isNew
-    ? `🎉 Welcome ${firstName || 'User'}!
+  const availableStock = await getAvailableCount();
+  const unitPrice = await getUnitPricePaise();
 
-🎁 A welcome bonus of ₹3.00 has been credited to your wallet!
+  // 4. Send persistent 4-dot bottom reply keyboard
+  await ctx.reply('⚡ Menu options available below (tap the 4 dots at bottom):', getBottomReplyKeyboard(isAdmin));
 
-Choose an option below to get started:`
-    : `👋 Welcome back, ${firstName || 'User'}!
+  // 5. Send main interactive dashboard with live stock
+  const welcomeText = `🏪 META ACCOUNTS STORE
+
+📦 Available Stock: ${availableStock} Accounts
+💰 Price: ${formatPaise(unitPrice)} / Account
+🎁 Welcome Bonus: ₹3.00
+
+${isNew ? '🎁 ₹3.00 Welcome bonus has been credited to your wallet!\n\n' : ''}👤 Customer: ${firstName || 'User'}
+💰 Wallet Balance: ${formatPaise(user.balancePaise)}
 
 Choose an option below:`;
 
-  return ctx.reply(welcomeText, getMainMenuKeyboard(isAdmin));
+  return ctx.reply(welcomeText, getMainMenuKeyboard({ availableStock, isAdmin }));
+};
+
+/**
+ * Handle Stock display for customer (/stock)
+ */
+const handleCustomerStock = async (ctx) => {
+  const telegramId = ctx.from.id;
+  const availableStock = await getAvailableCount();
+  const unitPrice = await getUnitPricePaise();
+
+  const text = `📦 LIVE STOCK INVENTORY
+
+🟢 Available Accounts: ${availableStock}
+💰 Unit Price: ${formatPaise(unitPrice)} / account
+🛒 Minimum Order: 10 Accounts (${formatPaise(unitPrice * 10n)})
+
+⚡ All accounts are verified and legally authorized.
+⚡ Delivered instantly into your Telegram chat upon purchase.`;
+
+  const keyboard = Markup.inlineKeyboard([
+    [Markup.button.callback('🟢 🛒 Buy Accounts Now', 'menu_buy')],
+    [Markup.button.callback('🔙 Back to Menu', 'main_menu')],
+  ]);
+
+  return ctx.reply(text, keyboard);
 };
 
 /**
@@ -81,6 +115,7 @@ const handleBalance = async (ctx) => {
   }
 
   const summary = await getBalanceSummary(user.id);
+  const availableStock = await getAvailableCount();
 
   const text = `💰 Balance
 
@@ -99,7 +134,7 @@ ${formatPaise(summary.referralEarnings)}
 Welcome Bonus:
 ${formatPaise(summary.welcomeBonus)}`;
 
-  return ctx.reply(text, getMainMenuKeyboard(config.isAdmin(telegramId)));
+  return ctx.reply(text, getMainMenuKeyboard({ availableStock, isAdmin: config.isAdmin(telegramId) }));
 };
 
 /**
@@ -122,18 +157,16 @@ const handleBuy = async (ctx) => {
   if (availableStock < 10) {
     return ctx.reply(
       '❌ Sorry, stock is currently unavailable. Please check back later.',
-      getMainMenuKeyboard(config.isAdmin(telegramId))
+      getMainMenuKeyboard({ availableStock, isAdmin: config.isAdmin(telegramId) })
     );
   }
 
   const text = `🛒 Buy Accounts
 
-Available Stock:
-${availableStock} Accounts
+📦 Available Stock: ${availableStock} Accounts
+💰 Price per account: ${formatPaise(unitPrice)}
 
-Price per account: ${formatPaise(unitPrice)}
-
-Select quantity (must be in multiples of 10):`;
+Select quantity below (multiples of 10):`;
 
   return ctx.reply(text, getBuyQuantityKeyboard(availableStock));
 };
@@ -158,7 +191,7 @@ const handleDeposit = async (ctx) => {
 
 Minimum manual deposit: ₹1.00
 
-Enter amount to add in ₹ (e.g. 50 or 100):`;
+Enter the amount in ₹ you wish to add (e.g. 50 or 100):`;
 
   return ctx.reply(text, getBackToMenuKeyboard());
 };
@@ -173,11 +206,12 @@ const handlePurchases = async (ctx) => {
     return ctx.reply('Please send /start first to register.');
   }
 
+  const availableStock = await getAvailableCount();
   const orders = await getUserOrders(user.id, 10);
   if (orders.length === 0) {
     return ctx.reply(
       '📦 You have not purchased any accounts yet.',
-      getMainMenuKeyboard(config.isAdmin(telegramId))
+      getMainMenuKeyboard({ availableStock, isAdmin: config.isAdmin(telegramId) })
     );
   }
 
@@ -191,7 +225,7 @@ Date: ${formatDateIST(o.createdAt)}`;
     })
     .join('\n\n-------------------------\n\n');
 
-  return ctx.reply(`📦 My Purchases\n\n${list}`, getMainMenuKeyboard(config.isAdmin(telegramId)));
+  return ctx.reply(`📦 My Purchases\n\n${list}`, getMainMenuKeyboard({ availableStock, isAdmin: config.isAdmin(telegramId) }));
 };
 
 /**
@@ -204,11 +238,12 @@ const handleTransactions = async (ctx) => {
     return ctx.reply('Please send /start first to register.');
   }
 
+  const availableStock = await getAvailableCount();
   const transactions = await getUserTransactions(user.id, 10);
   if (transactions.length === 0) {
     return ctx.reply(
       '💳 No transactions recorded yet.',
-      getMainMenuKeyboard(config.isAdmin(telegramId))
+      getMainMenuKeyboard({ availableStock, isAdmin: config.isAdmin(telegramId) })
     );
   }
 
@@ -220,7 +255,7 @@ const handleTransactions = async (ctx) => {
     })
     .join('\n\n');
 
-  return ctx.reply(`💳 Transactions\n\n${list}`, getMainMenuKeyboard(config.isAdmin(telegramId)));
+  return ctx.reply(`💳 Transactions\n\n${list}`, getMainMenuKeyboard({ availableStock, isAdmin: config.isAdmin(telegramId) }));
 };
 
 /**
@@ -233,6 +268,7 @@ const handleReferral = async (ctx) => {
     return ctx.reply('Please send /start first to register.');
   }
 
+  const availableStock = await getAvailableCount();
   const stats = await getUserReferralStats(user.id);
   const botUser = config.botUsername || ctx.botInfo?.username || 'bot';
   const referralLink = `https://t.me/${botUser}?start=${user.referralCode}`;
@@ -247,13 +283,14 @@ ${referralLink}
 📊 Your Referrals: ${stats.totalCount}
 💰 Total Earned: ${formatPaise(stats.totalEarnedPaise)}`;
 
-  return ctx.reply(text, getMainMenuKeyboard(config.isAdmin(telegramId)));
+  return ctx.reply(text, getMainMenuKeyboard({ availableStock, isAdmin: config.isAdmin(telegramId) }));
 };
 
 /**
  * Handle /help and /support command
  */
 const handleSupport = async (ctx) => {
+  const availableStock = await getAvailableCount();
   const text = `📞 Support & Assistance
 
 Need help with your account or order?
@@ -262,11 +299,12 @@ Please contact our official administrator.
 UPI ID: ${config.paymentUpiId}
 Account Name: ${config.paymentName}`;
 
-  return ctx.reply(text, getMainMenuKeyboard(config.isAdmin(ctx.from?.id)));
+  return ctx.reply(text, getMainMenuKeyboard({ availableStock, isAdmin: config.isAdmin(ctx.from?.id) }));
 };
 
 module.exports = {
   handleStart,
+  handleCustomerStock,
   handleBalance,
   handleBuy,
   handleDeposit,
