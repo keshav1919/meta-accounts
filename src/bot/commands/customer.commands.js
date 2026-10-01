@@ -97,8 +97,8 @@ const handleCustomerStock = async (ctx) => {
 ⚡ Delivered instantly into your Telegram chat upon purchase.`;
 
   const keyboard = Markup.inlineKeyboard([
-    [Markup.button.callback('🟢 🛒 Buy Accounts Now', 'menu_buy')],
-    [Markup.button.callback('🔙 Back to Menu', 'main_menu')],
+    [{ text: '🛒 Buy Accounts Now', callback_data: 'menu_buy', style: 'success' }],
+    [{ text: '🏠 Back to Menu', callback_data: 'main_menu' }],
   ]);
 
   return ctx.reply(text, keyboard);

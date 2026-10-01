@@ -2,7 +2,12 @@ const { Markup } = require('telegraf');
 const config = require('../../config');
 
 /**
- * Customer Keyboards and UI Layouts
+ * Customer Keyboards and Multi-Color Inline Button Layouts
+ * Uses Telegram Bot API 9.4 native button styles:
+ * - style: 'success' -> Green background
+ * - style: 'primary' -> Blue background
+ * - style: 'danger'  -> Red background
+ * - default          -> Dark grey background
  */
 
 /**
@@ -10,46 +15,93 @@ const config = require('../../config');
  */
 const getChannelJoinKeyboard = () => {
   return Markup.inlineKeyboard([
-    [Markup.button.url('📢 Join Channel', config.channelUsername)],
-    [Markup.button.callback('✅ Check Join', 'check_join')],
+    [{ text: '📢 Join Official Channel', url: config.channelUsername, style: 'primary' }],
+    [{ text: '✅ Check Membership', callback_data: 'check_join', style: 'success' }],
   ]);
 };
 
 /**
- * Main Customer Inline Menu Keyboard
- * Styled with green (🟢), blue (🔵), and red (🔴) matching the custom UI theme
- * @param {object} params
- * @param {number} params.availableStock
- * @param {boolean} params.isAdmin
+ * Main Customer Multi-Color Inline Menu Keyboard
+ * Matches the reference image layout:
+ * - Green full-width header action button (style: 'success')
+ * - Blue information and balance buttons (style: 'primary')
+ * - Green funding button (style: 'success')
+ * - Red support button (style: 'danger')
+ * - Dark standard main menu button
  */
 const getMainMenuKeyboard = ({ availableStock = 0, isAdmin = false } = {}) => {
-  const stockText = availableStock > 0 ? ` (${availableStock} Avail)` : ' (0 Avail)';
-  
+  const stockText = availableStock > 0 ? ` [${availableStock} Left]` : ' [0 Left]';
+
   const buttons = [
-    [Markup.button.callback(`🟢 🛒 Buy Accounts${stockText}`, 'menu_buy')],
-    [Markup.button.callback(`🔵 📦 Available Stock: ${availableStock}`, 'menu_stock')],
+    // Top Green Button (Action)
     [
-      Markup.button.callback('🔵 💰 Balance', 'menu_balance'),
-      Markup.button.callback('🟢 ➕ Add Funds', 'menu_deposit'),
+      {
+        text: `🛒 Buy Accounts (₹3/each)${stockText}`,
+        callback_data: 'menu_buy',
+        style: 'success',
+      },
     ],
+    // Blue Buttons (Stock & Balance)
     [
-      Markup.button.callback('🔵 📦 My Purchases', 'menu_purchases'),
-      Markup.button.callback('🔵 💳 Transactions', 'menu_transactions'),
+      {
+        text: `📦 Available Stock: ${availableStock}`,
+        callback_data: 'menu_stock',
+        style: 'primary',
+      },
+      {
+        text: '💰 Balance',
+        callback_data: 'menu_balance',
+        style: 'primary',
+      },
     ],
+    // Green Add Funds & Blue Purchases
     [
-      Markup.button.callback('🔵 👥 Refer & Earn', 'menu_referral'),
-      Markup.button.callback('🔴 📞 Support', 'menu_support'),
+      {
+        text: '➕ Add Funds',
+        callback_data: 'menu_deposit',
+        style: 'success',
+      },
+      {
+        text: '📋 My Purchases',
+        callback_data: 'menu_purchases',
+        style: 'primary',
+      },
+    ],
+    // Blue Ledger & Referrals
+    [
+      {
+        text: '💳 Transactions',
+        callback_data: 'menu_transactions',
+        style: 'primary',
+      },
+      {
+        text: '👥 Refer & Earn',
+        callback_data: 'menu_referral',
+        style: 'primary',
+      },
+    ],
+    // Red Support & Dark Home Button
+    [
+      {
+        text: '📞 Support',
+        callback_data: 'menu_support',
+        style: 'danger',
+      },
+      {
+        text: '🏠 Main Menu',
+        callback_data: 'main_menu',
+      },
     ],
   ];
 
-  // If a web app URL is available (e.g. from Render or local URL), add WebApp button
-  const webAppUrl = config.webhookUrl ? `${config.webhookUrl.replace(/\/$/, '')}/webapp` : null;
-  if (webAppUrl) {
-    buttons.push([Markup.button.webApp('📱 Open Colored UI Menu', webAppUrl)]);
-  }
-
   if (isAdmin) {
-    buttons.push([Markup.button.callback('🛠 Admin Panel', 'admin_menu')]);
+    buttons.push([
+      {
+        text: '🛠 Admin Control Panel',
+        callback_data: 'admin_menu',
+        style: 'primary',
+      },
+    ]);
   }
 
   return Markup.inlineKeyboard(buttons);
@@ -58,7 +110,6 @@ const getMainMenuKeyboard = ({ availableStock = 0, isAdmin = false } = {}) => {
 /**
  * Persistent 4-Dot Bottom Reply Keyboard (ReplyKeyboardMarkup)
  * Renders the 4-dots grid icon at the bottom of the Telegram chat bar
- * @param {boolean} isAdmin
  */
 const getBottomReplyKeyboard = (isAdmin = false) => {
   const rows = [
@@ -80,13 +131,13 @@ const getBottomReplyKeyboard = (isAdmin = false) => {
  */
 const getPaymentMethodKeyboard = () => {
   return Markup.inlineKeyboard([
-    [Markup.button.callback('🔙 Back to Menu', 'main_menu')],
+    [{ text: '🏠 Back to Menu', callback_data: 'main_menu' }],
   ]);
 };
 
 /**
  * Buy quantity selector keyboard (multiples of 10 up to available stock)
- * @param {number} availableStock
+ * Multi-color green options with dark cancel button
  */
 const getBuyQuantityKeyboard = (availableStock) => {
   const rows = [];
@@ -94,7 +145,11 @@ const getBuyQuantityKeyboard = (availableStock) => {
 
   const maxQty = Math.min(availableStock, 100);
   for (let q = 10; q <= maxQty; q += 10) {
-    currentRow.push(Markup.button.callback(`🟢 ${q} Accounts`, `buy_select_${q}`));
+    currentRow.push({
+      text: `${q} Accounts`,
+      callback_data: `buy_select_${q}`,
+      style: 'success',
+    });
     if (currentRow.length === 2) {
       rows.push(currentRow);
       currentRow = [];
@@ -104,19 +159,30 @@ const getBuyQuantityKeyboard = (availableStock) => {
     rows.push(currentRow);
   }
 
-  rows.push([Markup.button.callback('🔙 Back to Menu', 'main_menu')]);
+  rows.push([{ text: '🏠 Cancel & Back to Menu', callback_data: 'main_menu' }]);
 
   return Markup.inlineKeyboard(rows);
 };
 
 /**
- * Order confirmation keyboard
- * @param {number} quantity
+ * Order confirmation keyboard with multi-color buttons:
+ * - Green confirm button (style: 'success')
+ * - Red cancel button (style: 'danger')
  */
 const getOrderConfirmationKeyboard = (quantity) => {
   return Markup.inlineKeyboard([
-    [Markup.button.callback('🟢 ✅ Confirm Purchase', `buy_confirm_${quantity}`)],
-    [Markup.button.callback('🔴 ❌ Cancel', 'main_menu')],
+    [
+      {
+        text: '✅ Confirm Purchase',
+        callback_data: `buy_confirm_${quantity}`,
+        style: 'success',
+      },
+      {
+        text: '❌ Cancel',
+        callback_data: 'main_menu',
+        style: 'danger',
+      },
+    ],
   ]);
 };
 
@@ -125,7 +191,7 @@ const getOrderConfirmationKeyboard = (quantity) => {
  */
 const getBackToMenuKeyboard = () => {
   return Markup.inlineKeyboard([
-    [Markup.button.callback('🔙 Back to Menu', 'main_menu')],
+    [{ text: '🏠 Back to Menu', callback_data: 'main_menu' }],
   ]);
 };
 

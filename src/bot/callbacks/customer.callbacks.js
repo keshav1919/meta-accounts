@@ -99,8 +99,8 @@ Please select an option below:`;
 
     const keyboard = {
       inline_keyboard: [
-        [{ text: '🟢 🛒 Buy Accounts Now', callback_data: 'menu_buy' }],
-        [{ text: '🔙 Back to Menu', callback_data: 'main_menu' }],
+        [{ text: '🛒 Buy Accounts Now', callback_data: 'menu_buy', style: 'success' }],
+        [{ text: '🏠 Back to Menu', callback_data: 'main_menu' }],
       ],
     };
 
