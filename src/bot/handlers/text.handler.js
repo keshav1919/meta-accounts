@@ -6,6 +6,7 @@ const { adminAdjustBalance } = require('../../services/wallet.service');
 const { getAvailableCount } = require('../../services/stock.service');
 const { getUnitPricePaise } = require('../../services/purchase.service');
 const notificationService = require('../../services/notification.service');
+const { generateUpiQrBuffer } = require('../../utils/qrcode');
 const {
   getPaymentMethodKeyboard,
   getMainMenuKeyboard,
@@ -34,7 +35,7 @@ const handleTextMessage = async (ctx) => {
 
   const { state, data } = userState;
 
-  // 1. Customer Deposit Amount Input -> directly prompt for screenshot
+  // 1. Customer Deposit Amount Input -> generate UPI QR code & prompt for screenshot
   if (state === 'AWAITING_DEPOSIT_AMOUNT') {
     const parseRes = parseRupeesToPaise(text);
     if (!parseRes.valid) {
@@ -51,7 +52,7 @@ const handleTextMessage = async (ctx) => {
     // Set state directly to awaiting screenshot proof
     setState(telegramId, 'AWAITING_DEPOSIT_SCREENSHOT', { amountPaise: parseRes.paise });
 
-    const payMsg = `💳 PAYMENT INSTRUCTIONS
+    const payCaption = `💳 UPI PAYMENT QR CODE
 
 Amount: ${formatPaise(parseRes.paise)}
 
@@ -61,12 +62,32 @@ UPI ID:
 Account Name:
 ${config.paymentName}
 
-📸 Please make the payment and send your payment screenshot image directly in this chat:`;
+📲 Scan this QR with GPay, PhonePe, Paytm, or any UPI app to pay.
 
-    return ctx.reply(payMsg, {
-      parse_mode: 'Markdown',
-      ...getPaymentMethodKeyboard(),
-    });
+📸 After completing payment, send your payment screenshot image directly in this chat:`;
+
+    try {
+      const qrBuffer = await generateUpiQrBuffer({
+        upiId: config.paymentUpiId,
+        name: config.paymentName,
+        amountPaise: parseRes.paise,
+      });
+
+      return await ctx.replyWithPhoto(
+        { source: qrBuffer },
+        {
+          caption: payCaption,
+          parse_mode: 'Markdown',
+          ...getPaymentMethodKeyboard(),
+        }
+      );
+    } catch (err) {
+      logger.error('Failed to generate UPI QR code:', err.message);
+      return ctx.reply(payCaption, {
+        parse_mode: 'Markdown',
+        ...getPaymentMethodKeyboard(),
+      });
+    }
   }
 
   // 2. Customer Custom Quantity Input (Multiples of 10)

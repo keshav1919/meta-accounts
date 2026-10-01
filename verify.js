@@ -101,4 +101,27 @@ assert.strictEqual(config.isAdmin('111111111'), false);
 assert.strictEqual(config.isAdmin(null), false);
 console.log('✔ Admin check passed.\n');
 
-console.log('🎉 ALL AUTOMATED VERIFICATION TESTS PASSED SUCCESSFULLY!');
+// 6. Test UPI QR Code Generator
+console.log('Testing UPI QR Code Generator...');
+const { generateUpiPayString, generateUpiQrBuffer } = require('./src/utils/qrcode');
+const payString = generateUpiPayString({
+  upiId: 'xdsellerkeshav@fam',
+  name: 'LEGEND',
+  amountPaise: 5000n,
+});
+assert.strictEqual(payString, 'upi://pay?pa=xdsellerkeshav@fam&pn=LEGEND&am=50.00&cu=INR');
+
+generateUpiQrBuffer({
+  upiId: 'xdsellerkeshav@fam',
+  name: 'LEGEND',
+  amountPaise: 5000n,
+}).then((buf) => {
+  assert.ok(Buffer.isBuffer(buf), 'QR result must be a buffer');
+  assert.ok(buf.length > 500, 'QR buffer must be non-empty');
+  console.log('✔ UPI QR Code tests passed.\n');
+  console.log('🎉 ALL AUTOMATED VERIFICATION TESTS PASSED SUCCESSFULLY!');
+}).catch((err) => {
+  console.error('❌ UPI QR test failed:', err);
+  process.exit(1);
+});
+

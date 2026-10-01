@@ -18,8 +18,9 @@ const getChannelJoinKeyboard = () => {
 /**
  * Minimalist Clean Main Menu Keyboard (Inline Only)
  */
-const getMainMenuKeyboard = ({ availableStock = 0, isAdmin = false } = {}) => {
-  const stockText = availableStock > 0 ? ` [${availableStock} Left]` : ' [0 Left]';
+const getMainMenuKeyboard = (opts = {}) => {
+  const options = typeof opts === 'boolean' ? { isAdmin: opts } : (opts || {});
+  const { availableStock = 0, isAdmin = false } = options;
 
   const buttons = [
     // Top Green Action Button
