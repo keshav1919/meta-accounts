@@ -167,6 +167,36 @@ ${user.balancePaise < totalCost ? '\n⚠️ Insufficient balance! Please add fun
     await ctx.editMessageText(text, getOrderConfirmationKeyboard(quantity));
   });
 
+  // Custom Quantity Action
+  bot.action('buy_custom_qty', async (ctx) => {
+    await ctx.answerCbQuery();
+    const available = await getAvailableCount();
+    const unitPrice = await getUnitPricePaise();
+
+    setState(ctx.from.id, 'AWAITING_BUY_CUSTOM_QUANTITY', { availableStock: available });
+
+    const text = `✏️ Custom Quantity Purchase
+
+📦 In Stock: ${available} Accounts
+💰 Price: ${formatPaise(unitPrice)} / account
+
+Type and send the quantity you want to purchase:
+• Must be in multiples of 10 (e.g. 10, 40, 150, 500)
+• Maximum available: ${available} Accounts`;
+
+    const cancelKb = {
+      inline_keyboard: [
+        [{ text: '🏠 Cancel & Back to Menu', callback_data: 'main_menu' }],
+      ],
+    };
+
+    try {
+      await ctx.editMessageText(text, { reply_markup: cancelKb });
+    } catch {
+      await ctx.reply(text, { reply_markup: cancelKb });
+    }
+  });
+
   // Confirm Purchase
   bot.action(/^buy_confirm_(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery('Processing order...');

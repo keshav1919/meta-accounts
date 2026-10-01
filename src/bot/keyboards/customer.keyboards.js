@@ -2,7 +2,7 @@ const { Markup } = require('telegraf');
 const config = require('../../config');
 
 /**
- * Customer Keyboards - React-Router Styled Clean Navigation Flow
+ * Clean Single-Page Style Inline Keyboards
  */
 
 /**
@@ -16,17 +16,13 @@ const getChannelJoinKeyboard = () => {
 };
 
 /**
- * Clean Root Route Keyboard (Main Menu)
- * Only 4 top-level routes:
- * 1. 🛒 Buy Accounts (Green action)
- * 2. 💰 Wallet & Funds | 📋 My Orders (Blue primary routes)
- * 3. 👥 Refer & Earn | 📞 Support (Blue & Red)
+ * Minimalist Clean Main Menu Keyboard (Inline Only)
  */
 const getMainMenuKeyboard = ({ availableStock = 0, isAdmin = false } = {}) => {
   const stockText = availableStock > 0 ? ` [${availableStock} Left]` : ' [0 Left]';
 
   const buttons = [
-    // Route 1: Buy (Featured Action)
+    // Top Green Action Button
     [
       {
         text: `🛒 Buy Accounts (₹3/each)${stockText}`,
@@ -34,7 +30,7 @@ const getMainMenuKeyboard = ({ availableStock = 0, isAdmin = false } = {}) => {
         style: 'success',
       },
     ],
-    // Route 2 & 3: Wallet & Orders
+    // Blue Sub-Routes
     [
       {
         text: '💰 Wallet & Funds',
@@ -47,7 +43,7 @@ const getMainMenuKeyboard = ({ availableStock = 0, isAdmin = false } = {}) => {
         style: 'primary',
       },
     ],
-    // Route 4 & 5: Referrals & Support
+    // Blue Referral & Red Support
     [
       {
         text: '👥 Refer & Earn',
@@ -75,7 +71,7 @@ const getMainMenuKeyboard = ({ availableStock = 0, isAdmin = false } = {}) => {
 };
 
 /**
- * Sub-Route Keyboard: 💰 Wallet & Funds (/wallet)
+ * Sub-Route Keyboard: 💰 Wallet & Funds
  */
 const getWalletKeyboard = () => {
   return Markup.inlineKeyboard([
@@ -88,7 +84,7 @@ const getWalletKeyboard = () => {
 };
 
 /**
- * Sub-Route Keyboard: 📋 Orders (/orders)
+ * Sub-Route Keyboard: 📋 Orders
  */
 const getOrdersKeyboard = () => {
   return Markup.inlineKeyboard([
@@ -98,7 +94,7 @@ const getOrdersKeyboard = () => {
 };
 
 /**
- * Sub-Route Keyboard: 💳 Transactions (/transactions)
+ * Sub-Route Keyboard: 💳 Transactions
  */
 const getTransactionsKeyboard = () => {
   return Markup.inlineKeyboard([
@@ -110,24 +106,7 @@ const getTransactionsKeyboard = () => {
 };
 
 /**
- * Clean Persistent 4-Dot Bottom Reply Keyboard (ReplyKeyboardMarkup)
- */
-const getBottomReplyKeyboard = (isAdmin = false) => {
-  const rows = [
-    ['🛒 Buy Accounts', '💰 Wallet & Funds'],
-    ['📋 My Orders', '👥 Refer & Earn'],
-    ['📞 Support'],
-  ];
-
-  if (isAdmin) {
-    rows.push(['🛠 Admin Panel']);
-  }
-
-  return Markup.keyboard(rows).resize().persistent();
-};
-
-/**
- * Deposit payment keyboard (Screenshot only)
+ * Deposit payment keyboard
  */
 const getPaymentMethodKeyboard = () => {
   return Markup.inlineKeyboard([
@@ -136,14 +115,18 @@ const getPaymentMethodKeyboard = () => {
 };
 
 /**
- * Buy quantity selector keyboard (multiples of 10 up to available stock)
+ * Multiples of 10 Buy Quantity Keyboard
+ * Supports quick-select presets, max buy, and custom input for any multiple of 10
  */
 const getBuyQuantityKeyboard = (availableStock) => {
   const rows = [];
-  let currentRow = [];
+  const maxMultipleOf10 = Math.floor(availableStock / 10) * 10;
 
-  const maxQty = Math.min(availableStock, 100);
-  for (let q = 10; q <= maxQty; q += 10) {
+  // Presets of 10s based on available stock
+  const candidateQtys = [10, 20, 30, 50, 100, 200, 500].filter((q) => q <= availableStock);
+
+  let currentRow = [];
+  for (const q of candidateQtys) {
     currentRow.push({
       text: `${q} Accounts`,
       callback_data: `buy_select_${q}`,
@@ -157,6 +140,26 @@ const getBuyQuantityKeyboard = (availableStock) => {
   if (currentRow.length > 0) {
     rows.push(currentRow);
   }
+
+  // Max Available button if > 30 and not already exact preset
+  if (maxMultipleOf10 > 30 && !candidateQtys.includes(maxMultipleOf10)) {
+    rows.push([
+      {
+        text: `⚡ Buy Max (${maxMultipleOf10} Accounts)`,
+        callback_data: `buy_select_${maxMultipleOf10}`,
+        style: 'success',
+      },
+    ]);
+  }
+
+  // Custom Quantity Button (Allows entering any multiple of 10)
+  rows.push([
+    {
+      text: '✏️ Enter Custom Quantity (Multiples of 10)',
+      callback_data: 'buy_custom_qty',
+      style: 'primary',
+    },
+  ]);
 
   rows.push([{ text: '🏠 Cancel & Back to Menu', callback_data: 'main_menu' }]);
 
@@ -198,7 +201,6 @@ module.exports = {
   getWalletKeyboard,
   getOrdersKeyboard,
   getTransactionsKeyboard,
-  getBottomReplyKeyboard,
   getPaymentMethodKeyboard,
   getBuyQuantityKeyboard,
   getOrderConfirmationKeyboard,

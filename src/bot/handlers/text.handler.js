@@ -3,8 +3,15 @@ const logger = require('../../utils/logger');
 const { formatPaise, parseRupeesToPaise, formatDateIST } = require('../../utils/formatter');
 const { getUserByTelegramId, searchUsers, getUserProfileDetails } = require('../../services/user.service');
 const { adminAdjustBalance } = require('../../services/wallet.service');
+const { getAvailableCount } = require('../../services/stock.service');
+const { getUnitPricePaise } = require('../../services/purchase.service');
 const notificationService = require('../../services/notification.service');
-const { getPaymentMethodKeyboard, getMainMenuKeyboard, getBackToMenuKeyboard } = require('../keyboards/customer.keyboards');
+const {
+  getPaymentMethodKeyboard,
+  getMainMenuKeyboard,
+  getBackToMenuKeyboard,
+  getOrderConfirmationKeyboard,
+} = require('../keyboards/customer.keyboards');
 const { getPaymentActionKeyboard, getUserActionKeyboard, getBackToAdminKeyboard } = require('../keyboards/admin.keyboards');
 const { getState, setState, clearState } = require('../state');
 
@@ -60,6 +67,43 @@ ${config.paymentName}
       parse_mode: 'Markdown',
       ...getPaymentMethodKeyboard(),
     });
+  }
+
+  // 2. Customer Custom Quantity Input (Multiples of 10)
+  if (state === 'AWAITING_BUY_CUSTOM_QUANTITY') {
+    const q = parseInt(text, 10);
+    const availableStock = await getAvailableCount();
+
+    if (isNaN(q) || q < 10 || q % 10 !== 0) {
+      return ctx.reply(
+        '❌ Quantity must be a positive multiple of 10 (e.g. 10, 20, 50, 100, 250).\nPlease try again:',
+        getBackToMenuKeyboard()
+      );
+    }
+
+    if (q > availableStock) {
+      return ctx.reply(
+        `❌ Requested quantity (${q}) exceeds available stock (${availableStock}).\nPlease enter a smaller multiple of 10:`,
+        getBackToMenuKeyboard()
+      );
+    }
+
+    clearState(telegramId);
+
+    const user = await getUserByTelegramId(telegramId);
+    const unitPrice = await getUnitPricePaise();
+    const totalCost = unitPrice * BigInt(q);
+
+    const summaryText = `🛒 ORDER SUMMARY
+
+Quantity: ${q} Accounts
+Price per account: ${formatPaise(unitPrice)}
+Total Cost: ${formatPaise(totalCost)}
+
+Your Wallet Balance: ${formatPaise(user.balancePaise)}
+${user.balancePaise < totalCost ? '\n⚠️ Insufficient balance! Please add funds in your wallet first.' : ''}`;
+
+    return ctx.reply(summaryText, getOrderConfirmationKeyboard(q));
   }
 
   // 3. Admin Search User

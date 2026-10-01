@@ -14,7 +14,6 @@ const {
   getWalletKeyboard,
   getOrdersKeyboard,
   getTransactionsKeyboard,
-  getBottomReplyKeyboard,
   getBuyQuantityKeyboard,
   getBackToMenuKeyboard,
 } = require('../keyboards/customer.keyboards');
@@ -64,20 +63,14 @@ Please join our official channel before using the bot.`;
   const availableStock = await getAvailableCount();
   const unitPrice = await getUnitPricePaise();
 
-  // 4. Send persistent 4-dot bottom reply keyboard
-  await ctx.reply('⚡ Menu options available below (tap the 4 dots at bottom):', getBottomReplyKeyboard(isAdmin));
-
-  // 5. Send main interactive dashboard with live stock
   const welcomeText = `🏪 META ACCOUNTS STORE
 
 📦 Available Stock: ${availableStock} Accounts
 💰 Price: ${formatPaise(unitPrice)} / Account
 🎁 Welcome Bonus: ₹3.00
 
-${isNew ? '🎁 ₹3.00 Welcome bonus has been credited to your wallet!\n\n' : ''}👤 Customer: ${firstName || 'User'}
-💰 Wallet Balance: ${formatPaise(user.balancePaise)}
-
-Choose an option below:`;
+${isNew ? '🎁 ₹3.00 Welcome bonus credited to your wallet!\n\n' : ''}👤 Customer: ${firstName || 'User'}
+💰 Wallet Balance: ${formatPaise(user.balancePaise)}`;
 
   return ctx.reply(welcomeText, getMainMenuKeyboard({ availableStock, isAdmin }));
 };
